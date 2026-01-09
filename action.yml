@@ -18,6 +18,10 @@ inputs:
   directory:
     description: 'The directory you would like to deploy.'
     required: true
+  exclude-hidden:
+    description: 'Exclude hidden files and directories (starting with .) from deployment.'
+    required: false
+    default: 'false'
 
 runs:
   using: 'composite'
@@ -30,6 +34,13 @@ runs:
     - name: Setup bun
       uses: oven-sh/setup-bun@v2
 
+    - name: Filter hidden files
+      if: ${{ inputs.exclude-hidden == 'true' }}
+      run: |
+        mkdir -p .d2n-filtered
+        rsync -a --exclude='.*' "${{ inputs.directory }}/" .d2n-filtered/
+      shell: bash
+
     - run: |
         cd deploy2nekoweb
         bun install
@@ -41,7 +52,12 @@ runs:
 
         export D2N_NW_API_KEY="${{ inputs.nekoweb-api-key }}"
         export D2N_NW_DOMAIN="${{ inputs.nekoweb-domain }}"
-        export D2N_DIRECTORY="${{ inputs.directory }}"
-        
+
+        if [ "${{ inputs.exclude-hidden }}" = "true" ]; then
+          export D2N_DIRECTORY=".d2n-filtered"
+        else
+          export D2N_DIRECTORY="${{ inputs.directory }}"
+        fi
+
         bun run ./deploy2nekoweb/index.ts
       shell: bash
